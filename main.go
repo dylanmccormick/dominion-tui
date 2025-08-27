@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dylanmccormick/dominion-tui/internal/cards"
+	"github.com/dylanmccormick/dominion-tui/server"
 )
 
 type Action string
@@ -29,6 +30,11 @@ func main() {
 	for k, v := range commonDeck.CardMap {
 		fmt.Printf("Card Info: %s\nCount: %d\n", cards.CardDict[k].String(), v)
 	}
+
+	s := server.Init("42069")
+	s.Serve()
+
+	
 
 }
 
