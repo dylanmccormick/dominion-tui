@@ -6,32 +6,51 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
+
+	"github.com/dylanmccormick/dominion-tui/internal/utils"
 )
 
 type User struct {
-	Conn net.Conn
+	Conn     *net.Conn
 	Username string
-	ID string
+	ID       string
+	RoomId   string
+	Room     *Room
 }
+
 type Server struct {
-	Rooms map[string]*Room  // id: Room
-	Port string
+	Rooms map[string]*Room // id: Room
+	Port  string
 	Users map[string]User // id: User
 }
 
 type Room struct {
-	ID string
-	Players map[string]User // player id : TCP Connetion
+	ID         string
+	Players    map[string]User // player id : TCP Connetion
+	UpdateFunc func(r *Room)
 }
 
 func Init(port string) *Server {
 	return &Server{
 		Rooms: make(map[string]*Room),
-		Port: port,
+		Port:  port,
 	}
 }
 
-func (s Server) Serve() error{
+func (s Server) String() string {
+	return fmt.Sprintf(
+		`Port: %s,
+		Users: %v,
+		Rooms: %v,
+		`,
+		s.Port,
+		s.Users,
+		s.Rooms,
+	)
+}
+
+func (s Server) Serve() error {
 	listener, err := net.Listen("tcp", ":"+s.Port)
 	fmt.Printf("Server is listening on port %s\n", s.Port)
 	if err != nil {
@@ -39,6 +58,7 @@ func (s Server) Serve() error{
 	}
 
 	defer listener.Close()
+	go s.updateRooms()
 
 	for {
 		conn, err := listener.Accept()
@@ -46,46 +66,53 @@ func (s Server) Serve() error{
 			return fmt.Errorf("a listener error occurred: %s", err)
 		}
 
-		go s.handleRequest(conn)
-
-
+		go s.handleRequest(&conn)
 	}
 }
 
-func (s *Server) handleRequest(conn net.Conn) {
-	scanner := bufio.NewReader(conn)
+func (s *Server) updateRooms() {
 	for {
-		fmt.Fprintf(conn, "%s\n", "Welcome to the server. This is the main menu")
-		user := s.createUser(conn)
-		fmt.Fprintf(conn, "%s\r\n", "Please select a room to join")
-		buffer := make([]byte, 4096)
-		i, err := scanner.Read(buffer)
-		fmt.Printf("Read %d bytes\n", i)
-		if err != nil {
-			if err == io.EOF {
-				fmt.Println("End of connection closed gracefully")
-				return
-			} else {
-				fmt.Printf("Unknown error from TCP request: %s", err)
-			}
-			return
+		for _, room := range s.Rooms {
+			fmt.Println(room.ID)
+			room.UpdateFunc(room)
 		}
-		data := bytes.Split(buffer, []byte("\r\n"))
-		name := string(data[0])
-		s.assignRoom(user, name)
-
 	}
 }
 
-
-
-func (s *Server) createUser(conn net.Conn) *User {
-	message := "Please enter a username"
-	fmt.Fprintf(conn, "%s\r\n", message)
-	scanner := bufio.NewReader(conn)
+func (s *Server) handleRequest(conn *net.Conn) {
+	scanner := bufio.NewReader(*conn)
+	s.Rooms["lobby"] = createLobby()
+	fmt.Fprintf(*conn, "%s\n", "Welcome to the server. This is the main menu")
+	user := s.createUser(conn)
+	fmt.Fprintf(*conn, "%s\r\n", "Please select a room to join")
 	buffer := make([]byte, 4096)
-	i, err := scanner.Read(buffer)
-	fmt.Printf("Read %d bytes\n", i)
+	_, err := scanner.Read(buffer)
+	if err != nil {
+		if err == io.EOF {
+			fmt.Println("End of connection closed gracefully")
+			return
+		} else {
+			fmt.Printf("Unknown error from TCP request: %s", err)
+		}
+		return
+	}
+	data := bytes.Split(buffer, []byte("\r\n"))
+	clean := utils.ClearZeros(data[0])
+	name := strings.Trim(string(clean), " \n")
+	fmt.Println(name)
+	fmt.Println(s.assignRoom(user, name))
+}
+
+func (u *User) GetConnection() *net.Conn {
+	return u.Conn
+}
+
+func (s *Server) createUser(conn *net.Conn) *User {
+	message := "Please enter a username"
+	fmt.Fprintf(*conn, "%s\r\n", message)
+	scanner := bufio.NewReader(*conn)
+	buffer := make([]byte, 4096)
+	_, err := scanner.Read(buffer)
 	if err != nil {
 		if err == io.EOF {
 			fmt.Println("End of connection closed gracefully")
@@ -96,14 +123,20 @@ func (s *Server) createUser(conn net.Conn) *User {
 		return nil
 	}
 	data := bytes.Split(buffer, []byte("\r\n"))
-	name := string(data[0])
+	clean := utils.ClearZeros(data[0])
+	name := string(clean)
 
-	return &User {
-		Conn: conn,
+	return &User{
+		Conn:     conn,
 		Username: name,
 	}
 }
-func (s *Server) assignRoom(user *User, name string) string{
+
+func (s *Server) assignRoom(user *User, name string) string {
+	fmt.Printf("Attempting to join room: %#v", name)
+	for k := range s.Rooms {
+		fmt.Printf("Room name: %s\n", k)
+	}
 	room, ok := s.Rooms[name]
 	if !ok {
 		return "That room does not exist"
@@ -116,53 +149,16 @@ func (s *Server) assignRoom(user *User, name string) string{
 	return fmt.Sprintf("User added to room %s", room.ID)
 }
 
-
-
-// func (c *ServerConfig) handleRequest(conn net.Conn) {
-// 	scanner := bufio.NewReader(conn)
-// 	defer conn.Close()
-// 	log.Printf("Handling connection")
-//
-// 	for {
-// 		buffer := make([]byte, 4096)
-// 		i, err := scanner.Read(buffer)
-// 		fmt.Printf("Read %d bytes\n", i)
-// 		if err != nil {
-// 			if err == io.EOF {
-// 				fmt.Println("End of connection closed gracefully")
-// 				return
-// 			} else {
-// 				fmt.Printf("Unknown error from TCP request: %s", err)
-// 			}
-// 			return
-// 		}
-// 		buffer = util.ClearZeros(buffer)
-// 		log.Printf("clean read into buffer %#v\n", string(buffer))
-// 		response, err := cmd.HandleMessage(c.Database, buffer)
-// 		if err != nil {
-// 			fmt.Println("Error: ", err)
-// 		}
-// 		fmt.Println(response)
-// 		fmt.Fprintf(conn, "+%s\r\n", response)
-// 	}
-// }
-//
-// func (c *ServerConfig) Shell() {
-// 	reader := bufio.NewReader(os.Stdin)
-//
-// 	for {
-// 		fmt.Printf("localhost:%s> ", strconv.Itoa(c.Port))
-// 		input, err := reader.ReadString('\n')
-// 		if err != nil {
-// 			panic(err)
-// 		}
-// 		fmt.Printf("read input: %s\n", input)
-// 		strArr := strings.Split(strings.Trim(input, "\n"), " ")
-// 		resp, err := cmd.HandleCommand(c.Database, strArr)
-// 		if err != nil {
-// 			fmt.Println("Error: ", err)
-// 			continue
-// 		}
-// 		fmt.Println(resp)
-// 	}
-// }
+func createLobby() *Room {
+	f := func(r *Room) {
+		for _, v := range r.Players {
+			fmt.Println(v.Username)
+			fmt.Fprintf(*v.Conn, "Hello from the lobby, %s", v.Username)
+		}
+	}
+	return &Room{
+		ID:         "lobby",
+		Players:    map[string]User{},
+		UpdateFunc: f,
+	}
+}
