@@ -9,15 +9,8 @@ import (
 	"strings"
 
 	"github.com/dylanmccormick/dominion-tui/internal/utils"
+	"github.com/google/uuid"
 )
-
-type User struct {
-	Conn     *net.Conn
-	Username string
-	ID       string
-	RoomId   string
-	Room     *Room
-}
 
 type Server struct {
 	Rooms map[string]*Room // id: Room
@@ -27,7 +20,7 @@ type Server struct {
 
 type Room struct {
 	ID         string
-	Players    map[string]User // player id : TCP Connetion
+	Players    map[uuid.UUID]User // player id : TCP Connetion
 	UpdateFunc func(r *Room)
 }
 
@@ -58,6 +51,9 @@ func (s Server) Serve() error {
 	}
 
 	defer listener.Close()
+	// Initialize Server?
+	s.Rooms["lobby"] = createLobby()
+
 	go s.updateRooms()
 
 	for {
@@ -79,11 +75,11 @@ func (s *Server) updateRooms() {
 	}
 }
 
+// change this to create a new client and assign to a room
 func (s *Server) handleRequest(conn *net.Conn) {
-	scanner := bufio.NewReader(*conn)
-	s.Rooms["lobby"] = createLobby()
+	scanner := bufio.NewReader(*conn) // we shouldn't need to read input yet. Let's break this up logically
 	fmt.Fprintf(*conn, "%s\n", "Welcome to the server. This is the main menu")
-	user := s.createUser(conn)
+	user := createUser(conn)
 	fmt.Fprintf(*conn, "%s\r\n", "Please select a room to join")
 	buffer := make([]byte, 4096)
 	_, err := scanner.Read(buffer)
@@ -103,34 +99,6 @@ func (s *Server) handleRequest(conn *net.Conn) {
 	fmt.Println(s.assignRoom(user, name))
 }
 
-func (u *User) GetConnection() *net.Conn {
-	return u.Conn
-}
-
-func (s *Server) createUser(conn *net.Conn) *User {
-	message := "Please enter a username"
-	fmt.Fprintf(*conn, "%s\r\n", message)
-	scanner := bufio.NewReader(*conn)
-	buffer := make([]byte, 4096)
-	_, err := scanner.Read(buffer)
-	if err != nil {
-		if err == io.EOF {
-			fmt.Println("End of connection closed gracefully")
-			return nil
-		} else {
-			fmt.Printf("Unknown error from TCP request: %s", err)
-		}
-		return nil
-	}
-	data := bytes.Split(buffer, []byte("\r\n"))
-	clean := utils.ClearZeros(data[0])
-	name := string(clean)
-
-	return &User{
-		Conn:     conn,
-		Username: name,
-	}
-}
 
 func (s *Server) assignRoom(user *User, name string) string {
 	fmt.Printf("Attempting to join room: %#v", name)
@@ -142,9 +110,7 @@ func (s *Server) assignRoom(user *User, name string) string {
 		return "That room does not exist"
 	}
 
-	id := "one"
-	room.Players[id] = *user
-	user.ID = id
+	room.Players[user.ID] = *user
 
 	return fmt.Sprintf("User added to room %s", room.ID)
 }
@@ -158,7 +124,7 @@ func createLobby() *Room {
 	}
 	return &Room{
 		ID:         "lobby",
-		Players:    map[string]User{},
+		Players:    map[uuid.UUID]User{},
 		UpdateFunc: f,
 	}
 }
