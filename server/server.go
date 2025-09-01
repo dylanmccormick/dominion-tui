@@ -22,6 +22,7 @@ type Room struct {
 	ID         string
 	Players    map[uuid.UUID]User // player id : TCP Connetion
 	UpdateFunc func(r *Room)
+	Chat       chan []byte
 }
 
 func Init(port string) *Server {
@@ -29,6 +30,16 @@ func Init(port string) *Server {
 		Rooms: make(map[string]*Room),
 		Port:  port,
 	}
+}
+
+func (r *Room) String() string{
+	var out bytes.Buffer
+
+	out.WriteString(fmt.Sprintf("ID: %s\n", r.ID))
+	out.WriteString(fmt.Sprintf("Chat %T", r.Chat))
+
+	return out.String()
+
 }
 
 func (s Server) String() string {
@@ -69,7 +80,6 @@ func (s Server) Serve() error {
 func (s *Server) updateRooms() {
 	for {
 		for _, room := range s.Rooms {
-			fmt.Println(room.ID)
 			room.UpdateFunc(room)
 		}
 	}
@@ -97,8 +107,8 @@ func (s *Server) handleRequest(conn *net.Conn) {
 	name := strings.Trim(string(clean), " \n")
 	fmt.Println(name)
 	fmt.Println(s.assignRoom(user, name))
+	go user.HandleChat()
 }
-
 
 func (s *Server) assignRoom(user *User, name string) string {
 	fmt.Printf("Attempting to join room: %#v", name)
@@ -111,20 +121,28 @@ func (s *Server) assignRoom(user *User, name string) string {
 	}
 
 	room.Players[user.ID] = *user
+	user.Room = room
 
 	return fmt.Sprintf("User added to room %s", room.ID)
 }
 
 func createLobby() *Room {
+	c := make(chan []byte)
 	f := func(r *Room) {
-		for _, v := range r.Players {
-			fmt.Println(v.Username)
-			fmt.Fprintf(*v.Conn, "Hello from the lobby, %s", v.Username)
+		select {
+		case msg := <-r.Chat:
+			for _, u := range r.Players {
+				u.SendMessage(string(msg))
+			}
+
+		default:
+			// do nothing
 		}
 	}
 	return &Room{
 		ID:         "lobby",
 		Players:    map[uuid.UUID]User{},
 		UpdateFunc: f,
+		Chat:       c,
 	}
 }
