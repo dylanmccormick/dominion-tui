@@ -82,18 +82,18 @@ func (u *User) InputChannel(c chan []byte) {
 		}
 		data := bytes.Split(buffer, []byte("\r\n"))
 		clean := utils.ClearZeros(data[0])
-		prepend := fmt.Appendf(nil, "%s: ", u.Username)
-		message := append(prepend, clean...)
-		c <- message
+		c <- clean
 	}
 }
 
-func (u *User) SendMessage(message string) {
+func (u *User) SendMessage(byts []byte) {
+	prepend := fmt.Appendf(nil, "%s: ", u.Username)
+	message := append(prepend, byts...)
 	fmt.Fprintf(*u.Conn, "%s" , message)
 }
 
 func (u *User) HandleChat() {
-	go u.InputChannel(u.Room.Chat)
-	for {
+	if u.Room != nil {
+		go u.InputChannel(u.Room.InputChannel)
 	}
 }

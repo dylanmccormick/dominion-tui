@@ -1,0 +1,12 @@
+// This is an example message
+{
+	"requester": <user UUID>,
+	"type": <command, chat, action>
+	"body": {
+		// I imagine this will get more complex as we go along. We'll have to specify cards or players or whatever. Will probably be command / action specific
+	}
+}
+
+command: anything we need to do as an interaction between client and server that does not have to do with actual gameplay. i.e. change rooms, kick player, change settings, 
+action: anything that needs to be done within a game. draw cards, select a player to target, an action
+chat: obviously just chat

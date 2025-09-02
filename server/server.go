@@ -19,10 +19,11 @@ type Server struct {
 }
 
 type Room struct {
-	ID         string
-	Players    map[uuid.UUID]User // player id : TCP Connetion
-	UpdateFunc func(r *Room)
-	Chat       chan []byte
+	ID            string
+	Players       map[uuid.UUID]User // player id : TCP Connetion
+	UpdateFunc    func(r *Room)
+	InputChannel  chan []byte
+	OutputChannel chan []byte
 }
 
 func Init(port string) *Server {
@@ -32,14 +33,13 @@ func Init(port string) *Server {
 	}
 }
 
-func (r *Room) String() string{
+func (r *Room) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(fmt.Sprintf("ID: %s\n", r.ID))
-	out.WriteString(fmt.Sprintf("Chat %T", r.Chat))
+	out.WriteString(fmt.Sprintf("Chat %T", r.InputChannel))
 
 	return out.String()
-
 }
 
 func (s Server) String() string {
@@ -80,7 +80,7 @@ func (s Server) Serve() error {
 func (s *Server) updateRooms() {
 	for {
 		for _, room := range s.Rooms {
-			room.UpdateFunc(room)
+			room.Update()
 		}
 	}
 }
@@ -105,7 +105,6 @@ func (s *Server) handleRequest(conn *net.Conn) {
 	data := bytes.Split(buffer, []byte("\r\n"))
 	clean := utils.ClearZeros(data[0])
 	name := strings.Trim(string(clean), " \n")
-	fmt.Println(name)
 	fmt.Println(s.assignRoom(user, name))
 	go user.HandleChat()
 }
@@ -130,9 +129,9 @@ func createLobby() *Room {
 	c := make(chan []byte)
 	f := func(r *Room) {
 		select {
-		case msg := <-r.Chat:
+		case msg := <-r.InputChannel:
 			for _, u := range r.Players {
-				u.SendMessage(string(msg))
+				u.SendMessage(msg)
 			}
 
 		default:
@@ -140,9 +139,28 @@ func createLobby() *Room {
 		}
 	}
 	return &Room{
-		ID:         "lobby",
-		Players:    map[uuid.UUID]User{},
-		UpdateFunc: f,
-		Chat:       c,
+		ID:           "lobby",
+		Players:      map[uuid.UUID]User{},
+		UpdateFunc:   f,
+		InputChannel: c,
 	}
+}
+
+func (r *Room) Update() {
+	select {
+
+	case msg := <-r.InputChannel:
+		handleMessage(msg)
+	case msg := <-r.OutputChannel:
+		for _, u := range r.Players {
+			u.SendMessage(msg)
+		}
+	default:
+		// do nothing
+	}
+}
+
+func handleMessage(msg []byte) {
+	decMsg := decodeMessage(msg)
+	fmt.Printf("Received message: %+v",  decMsg)
 }
