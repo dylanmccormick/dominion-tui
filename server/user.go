@@ -87,8 +87,10 @@ func (u *User) InputChannel(c chan []byte) {
 }
 
 func (u *User) SendMessage(byts []byte) {
+	fmt.Println("sending message")
 	prepend := fmt.Appendf(nil, "%s: ", u.Username)
 	message := append(prepend, byts...)
+	message = append(message, []byte("\r\n")...)
 	fmt.Fprintf(*u.Conn, "%s" , message)
 }
 

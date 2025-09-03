@@ -88,7 +88,7 @@ func (s *Server) updateRooms() {
 // change this to create a new client and assign to a room
 func (s *Server) handleRequest(conn *net.Conn) {
 	scanner := bufio.NewReader(*conn) // we shouldn't need to read input yet. Let's break this up logically
-	fmt.Fprintf(*conn, "%s\n", "Welcome to the server. This is the main menu")
+	fmt.Fprintf(*conn, "%s\r\n", "Welcome to the server. This is the main menu")
 	user := createUser(conn)
 	fmt.Fprintf(*conn, "%s\r\n", "Please select a room to join")
 	buffer := make([]byte, 4096)
@@ -150,8 +150,9 @@ func (r *Room) Update() {
 	select {
 
 	case msg := <-r.InputChannel:
-		handleMessage(msg)
+		r.handleMessage(msg)
 	case msg := <-r.OutputChannel:
+		fmt.Println("sending message")
 		for _, u := range r.Players {
 			u.SendMessage(msg)
 		}
@@ -160,7 +161,14 @@ func (r *Room) Update() {
 	}
 }
 
-func handleMessage(msg []byte) {
+func (r *Room) handleMessage(msg []byte) {
 	decMsg := decodeMessage(msg)
 	fmt.Printf("Received message: %+v",  decMsg)
+	strMsg, ok := decMsg.Body["message"].(string)
+	if !ok {
+		fmt.Println("Message not ok")
+		return
+	}
+	r.OutputChannel <- []byte(strMsg)
+
 }

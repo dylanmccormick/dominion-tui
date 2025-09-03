@@ -37,3 +37,5 @@
 - User authentication? Don't want this thing to be spammed by scrapers or bots or whatever. I have hundreds of dollars in arbys coupons I don't want stolen
 
 
+## Important Tips?
+- Reading from a TCP connection is just like reading from a file, but you don't get to choose how much data you get. So every message needs to have a set of chars at the end to signal that is the end of the message. This is the importance of "\r\n" in HTTP protocol. I need to be parsing for those breaks, but if I read a lot more data than I expect, I need to save that data for teh next round of message parsing. 
