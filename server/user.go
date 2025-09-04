@@ -20,7 +20,7 @@ type User struct {
 	Room     *Room
 }
 
-func (u *User) String() string{
+func (u *User) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(fmt.Sprintf("Username: %s\n", u.Username))
@@ -29,7 +29,6 @@ func (u *User) String() string{
 	out.WriteString("\n")
 
 	return out.String()
-
 }
 
 func (u *User) GetConnection() *net.Conn {
@@ -69,7 +68,7 @@ func (u *User) GetUserInput() []byte {
 func (u *User) InputChannel(c chan []byte) {
 	for {
 		scanner := bufio.NewReader(*u.Conn)
-		buffer := make([]byte, 4096)
+		buffer := make([]byte, 10240)
 		_, err := scanner.Read(buffer)
 		if err != nil {
 			if err == io.EOF {
@@ -81,20 +80,22 @@ func (u *User) InputChannel(c chan []byte) {
 			}
 		}
 		data := bytes.Split(buffer, []byte("\r\n"))
-		clean := utils.ClearZeros(data[0])
-		c <- clean
+		for _, dat := range data[:len(data)-1] {
+			clean := utils.ClearZeros(dat)
+			c <- clean
+		}
 	}
 }
 
 func (u *User) SendMessage(byts []byte) {
-	fmt.Println("sending message")
 	prepend := fmt.Appendf(nil, "%s: ", u.Username)
 	message := append(prepend, byts...)
 	message = append(message, []byte("\r\n")...)
-	fmt.Fprintf(*u.Conn, "%s" , message)
+	fmt.Fprintf(*u.Conn, "%s", message)
 }
 
 func (u *User) HandleChat() {
+	fmt.Printf("Handling chat for user: %s\n", u.Username)
 	if u.Room != nil {
 		go u.InputChannel(u.Room.InputChannel)
 	}

@@ -19,11 +19,13 @@ type Server struct {
 }
 
 type Room struct {
-	ID            string
-	Players       map[uuid.UUID]User // player id : TCP Connetion
-	UpdateFunc    func(r *Room)
-	InputChannel  chan []byte
-	OutputChannel chan []byte
+	ID             string
+	Players        map[uuid.UUID]User // player id : TCP Connetion
+	UpdateFunc     func(r *Room)
+	InputChannel   chan []byte
+	ChatChannel    chan Message
+	ActionChannel  chan Message
+	CommandChannel chan Message
 }
 
 func Init(port string) *Server {
@@ -80,6 +82,7 @@ func (s Server) Serve() error {
 func (s *Server) updateRooms() {
 	for {
 		for _, room := range s.Rooms {
+			room.GetInputs()
 			room.Update()
 		}
 	}
@@ -126,49 +129,73 @@ func (s *Server) assignRoom(user *User, name string) string {
 }
 
 func createLobby() *Room {
-	c := make(chan []byte)
-	f := func(r *Room) {
-		select {
-		case msg := <-r.InputChannel:
-			for _, u := range r.Players {
-				u.SendMessage(msg)
-			}
+	ic := make(chan []byte)
+	chc := make(chan Message, 10)
+	cc := make(chan Message, 10)
+	ac := make(chan Message, 10)
 
-		default:
-			// do nothing
-		}
-	}
+
 	return &Room{
 		ID:           "lobby",
 		Players:      map[uuid.UUID]User{},
-		UpdateFunc:   f,
-		InputChannel: c,
+		InputChannel: ic,
+		ChatChannel: chc,
+		CommandChannel: cc,
+		ActionChannel: ac,
 	}
+}
+
+func (r *Room) GetInputs() {
+		select {
+		case msg := <-r.InputChannel:
+			r.handleInput(msg)
+		default: 
+			return
+		}
 }
 
 func (r *Room) Update() {
 	select {
-
-	case msg := <-r.InputChannel:
-		r.handleMessage(msg)
-	case msg := <-r.OutputChannel:
-		fmt.Println("sending message")
-		for _, u := range r.Players {
-			u.SendMessage(msg)
-		}
+	case msg := <-r.ChatChannel:
+		r.handleChat(msg)
+	case msg := <-r.ActionChannel:
+		r.handleAction(msg)
+	case msg := <-r.CommandChannel:
+		r.handleCommand(msg)
 	default:
-		// do nothing
+		return
 	}
 }
 
-func (r *Room) handleMessage(msg []byte) {
+func (r *Room) handleInput(msg []byte) {
 	decMsg := decodeMessage(msg)
-	fmt.Printf("Received message: %+v",  decMsg)
-	strMsg, ok := decMsg.Body["message"].(string)
-	if !ok {
-		fmt.Println("Message not ok")
+	switch decMsg.Typ {
+	case "command":
+		r.CommandChannel <- decMsg
+	case "action":
+		r.ActionChannel <- decMsg
+	case "chat":
+		r.ChatChannel <- decMsg
+	default:
 		return
 	}
-	r.OutputChannel <- []byte(strMsg)
+}
 
+func (r *Room) handleChat(msg Message) {
+	for _, u := range r.Players {
+		m, ok := msg.Body["message"].(string)
+		if !ok {
+			fmt.Println("Bad message. not a string")
+			return
+		}
+		fmt.Fprintf(*u.Conn, "%s: %s\r\n", u.Username, m)
+	}
+}
+
+func (r *Room) handleAction(msg Message) {
+	fmt.Println("Handling Action...")
+}
+
+func (r *Room) handleCommand(msg Message) {
+	fmt.Println("Handling Command...")
 }

@@ -7,7 +7,7 @@ import (
 
 type Message struct {
 	Requester string `json:"requester"`
-	Type      string `json:"message_type"`
+	Typ      string `json:"message_type"`
 	Body      map[string]any `json:"body"`
 	Time      int64 
 }

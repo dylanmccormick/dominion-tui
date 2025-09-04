@@ -42,6 +42,7 @@ func SimulateClient() {
 }
 
 func PrintResponses(conn *net.Conn) {
+	count := 0
 	for {
 		scanner := bufio.NewReader(*conn)
 		buffer := make([]byte, 4096)
@@ -55,11 +56,18 @@ func PrintResponses(conn *net.Conn) {
 				break
 			}
 		}
-		data := bytes.Split(buffer, []byte("\r\n"))
-		clean := utils.ClearZeros(data[0])
-		fmt.Println("\t\t Response:" + string(clean))
+		data := bytes.SplitSeq(buffer, []byte("\r\n"))
+		for dat := range data {
+			clean := utils.ClearZeros(dat)
+			if len(clean) == 0 {
+				continue
+			}
+			fmt.Printf("\t\t%d %s\n", count, string(clean))
+			count += 1
+		}
 	}
 }
+
 
 func CreateRandomChat() server.Message {
 		answers := []string{
@@ -94,7 +102,7 @@ func CreateRandomChat() server.Message {
 
 	return server.Message{
 		Requester: names[rand.Intn(len(names))],
-		Type: "chat",
+		Typ: "chat",
 		Body: map[string]any{
 			"message": fmt.Sprintf("Magic 8-Ball says: %s", answers[rand.Intn(len(answers))]),
 		},

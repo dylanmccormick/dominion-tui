@@ -38,6 +38,8 @@ func main() {
 
 	time.Sleep(5 * time.Second)
 	client.SimulateClient()
+	for {
+	}
 }
 
 func (od *OrderedDeck) peek(n int) {
