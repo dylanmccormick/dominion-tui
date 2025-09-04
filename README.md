@@ -24,3 +24,47 @@ Idk some design in figma maybe?
 
 Play with bbt or get the game loop. Many directions this can go
 
+
+## Message Protocol
+We will need a message protocol to help facilitate and organize messages through the system. There will be multiple types of messages and each message will have an ID. 
+
+prompt: This is any message that prompts the client for input. Will be used for game actions and login and maybe other things
+```json
+{
+    "version": 1,
+    "message_id": "auth_001",
+    "type": "prompt",
+    "ack_needed": true,
+    "body": {
+        "prompt_type": "authentication",
+        "title": "Login Required",
+        "options": ["login", "register"]
+        "fields": [
+            {"name": "username", "type": "text", "required": true},
+            {"name": "password", "type": "password", "required": true}
+        ]
+    }
+}
+```
+
+prompt_response: this is a response to a prompt. We'll need to know which prompt we are responding to
+```json
+{
+    "version": 1,
+    "message_id": "auth_002",
+    "type": "prompt_response",
+    "ack_needed": true,
+    "body": {
+        "prompt_id": "auth_001",
+        "action": "login"
+        "data": {
+            "username": "Alice",
+            "password": <hashed_password>
+        }
+        "fields": [
+            {"name": "username", "type": "text", "required": true},
+            {"name": "password", "type": "password", "required": true}
+        ]
+    }
+}
+```

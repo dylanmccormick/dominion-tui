@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dylanmccormick/dominion-tui/client"
+	// "github.com/dylanmccormick/dominion-tui/client"
 	"github.com/dylanmccormick/dominion-tui/internal/cards"
 	"github.com/dylanmccormick/dominion-tui/server"
 )
@@ -37,7 +37,7 @@ func main() {
 	go s.Serve()
 
 	time.Sleep(5 * time.Second)
-	client.SimulateClient()
+	// client.SimulateClient()
 	for {
 	}
 }

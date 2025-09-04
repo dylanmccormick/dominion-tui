@@ -1,0 +1,10 @@
+{
+	"version": "1",
+	"message_id": "1235",
+	"type": "type",
+	"sent_at": "timestamp",
+	"ack_needed": true,
+	"message": {
+		"tbd": "tbd"
+	}
+}
