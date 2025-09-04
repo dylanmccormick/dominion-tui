@@ -1,3 +1,32 @@
+# High Level Description
+
+## The Repository will be separated by different layers
+
+## TUI Layer:
+    - Handle all UI interactions and send 
+    - Handle rendering of components and updates
+    - Handle User inputs
+
+## Network Layer:
+    - TCP Communication
+    - Message Serialization
+    - Protocol (json api definition)
+    - Connection management
+
+## Game Layer:
+    - Game Engine
+    - Rules
+    - State management 
+    - Diff management
+    - Turn Management Logic
+
+## Data Layer:
+    - Card Definitions
+    - Player Information
+    - Persistence. 
+    - Saving Game state??
+
+
 # Server
 - Implement connection with TCP and handle sockets?
 - I don't think it needs to be UDP because actions in Dominion do not happen that quickly. We can wait for other players. 
@@ -39,3 +68,10 @@
 
 ## Important Tips?
 - Reading from a TCP connection is just like reading from a file, but you don't get to choose how much data you get. So every message needs to have a set of chars at the end to signal that is the end of the message. This is the importance of "\r\n" in HTTP protocol. I need to be parsing for those breaks, but if I read a lot more data than I expect, I need to save that data for teh next round of message parsing. 
+
+## Thoughts
+
+- I think I may have screwed up the design here a little bit. I think every action should revolve around a user. A user has 3 types of messages to send to the room. Users can only send "actions" when it is their turn, but chats and commands can be sent at any time. 
+- what if I drew a diagram on how I think it should work?
+- go routines continuously read chats/commands from the user, but the user needs to be prompted for actions. Should this work more like an HTTP endpoint where you have requests/response in a certain format? I think I'm kind of doing that with what I have where a message has a type. Each message needs a delimeter `\r\n` which marks the end of a message. If everything is sent in JSON, then the frontend of the TUI will handle that and the backend of the server will be able to parse it easily. Maybe the TUI and the Game server should be different repositories. Actually we don't need to do that. We can just have the TUI be able to run the server. 
+

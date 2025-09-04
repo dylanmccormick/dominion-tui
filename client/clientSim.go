@@ -30,8 +30,20 @@ func SimulateClient() {
 	fmt.Println("Simulating client")
 	go PrintResponses(&conn)
 
-	for range 100 {
+	for range 10 {
 		msg, err := json.Marshal(CreateRandomChat())
+		if err != nil {
+			continue
+		}
+		conn.Write(append(msg, []byte("\r\n")...))
+		
+		msg, err = json.Marshal(CreateRandomAction())
+		if err != nil {
+			continue
+		}
+		conn.Write(append(msg, []byte("\r\n")...))
+
+		msg, err = json.Marshal(CreateRandomCommand())
 		if err != nil {
 			continue
 		}
@@ -68,9 +80,8 @@ func PrintResponses(conn *net.Conn) {
 	}
 }
 
-
 func CreateRandomChat() server.Message {
-		answers := []string{
+	answers := []string{
 		"It is certain",
 		"It is decidedly so",
 		"Without a doubt",
@@ -93,7 +104,7 @@ func CreateRandomChat() server.Message {
 		"Very doubtful",
 	}
 
-	names := []string {
+	names := []string{
 		"Dylan",
 		"Oliver",
 		"ClapTrap",
@@ -102,12 +113,57 @@ func CreateRandomChat() server.Message {
 
 	return server.Message{
 		Requester: names[rand.Intn(len(names))],
-		Typ: "chat",
+		Typ:       "chat",
 		Body: map[string]any{
 			"message": fmt.Sprintf("Magic 8-Ball says: %s", answers[rand.Intn(len(answers))]),
 		},
-
 	}
-
 }
 
+func CreateRandomAction() server.Message {
+	cards := []string{
+		"Market",
+		"Plain",
+		"Beef",
+	}
+
+	names := []string{
+		"Dylan",
+		"Oliver",
+		"ClapTrap",
+		"Meeble",
+	}
+
+	return server.Message{
+		Requester: names[rand.Intn(len(names))],
+		Typ:       "action",
+		Body: map[string]any{
+			"action_name": "discard",
+			"cards": cards,
+		},
+	}
+}
+
+func CreateRandomCommand() server.Message {
+	commands := []string{
+		"Mute",
+		"Kick",
+		"Leave",
+	}
+
+	names := []string{
+		"Dylan",
+		"Oliver",
+		"ClapTrap",
+		"Meeble",
+	}
+
+	return server.Message{
+		Requester: names[rand.Intn(len(names))],
+		Typ:       "command",
+		Body: map[string]any{
+			"command_name": commands[rand.Intn(len(commands))],
+			"target": names[rand.Intn(len(names))],
+		},
+	}
+}
