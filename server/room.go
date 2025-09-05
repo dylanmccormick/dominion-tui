@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	// "encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -14,6 +13,8 @@ type Room struct {
 	Players          map[uuid.UUID]User // player id : TCP Connetion
 	UpdateFunc       func(r *Room)
 	BroadcastChannel chan Message
+	CommandChannel   chan CommandBody
+	Game             any // a room will have a game... with a state. Which we can point to
 }
 
 func (r *Room) String() string {
@@ -26,41 +27,16 @@ func (r *Room) String() string {
 
 func (r *Room) Update() {
 	select {
-	case msg := <- r.BroadcastChannel:
-		r.handleChat(msg)
+	case msg := <-r.BroadcastChannel:
+		r.handleBroadcast(msg)
+	case cmd := <-r.CommandChannel:
+		r.handleCommand(cmd)
 	default:
 		return
 	}
 }
 
-// func (r *Room) Update() {
-// 	select {
-// 	case msg := <-r.ChatChannel:
-// 		r.handleChat(msg)
-// 	case msg := <-r.ActionChannel:
-// 		r.handleAction(msg)
-// 	case msg := <-r.CommandChannel:
-// 		r.handleCommand(msg)
-// 	default:
-// 		return
-// 	}
-// }
-//
-// func (r *Room) handleInput(msg []byte) {
-// 	decMsg := decodeMessage(msg)
-// 	switch decMsg.Type {
-// 	case "command":
-// 		r.CommandChannel <- decMsg
-// 	case "action":
-// 		r.ActionChannel <- decMsg
-// 	case "chat":
-// 		r.ChatChannel <- decMsg
-// 	default:
-// 		return
-// 	}
-// }
-
-func (r *Room) handleChat(msg Message) {
+func (r *Room) handleBroadcast(msg Message) {
 	for _, u := range r.Players {
 		data, err := json.Marshal(msg)
 		if err != nil {
@@ -72,24 +48,10 @@ func (r *Room) handleChat(msg Message) {
 	}
 }
 
-// TODO: Rethink. Chat body will be just passed from server to client. Is there a need to translate it?
-// func (r *Room) handleChat(msg Message) {
-// 	for _, u := range r.Players {
-// 		var cb ChatBody
-// 		json.Unmarshal(msg, &cb)
-// 		if !ok {
-// 			fmt.Println("Bad message. not a string")
-// 			return
-// 		}
-// 		m := cb.Message
-// 		fmt.Fprintf(u.Conn, "%s: %s\r\n", u.Username, m)
-// 	}
-// }
-
 func (r *Room) handleAction(msg Message) {
 	fmt.Println("Handling Action...")
 }
 
-func (r *Room) handleCommand(msg Message) {
-	fmt.Println("Handling Command...")
+func (r *Room) handleCommand(cmd CommandBody) {
+	fmt.Printf("Command: %s\n", cmd.Command)
 }

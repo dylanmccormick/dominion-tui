@@ -68,3 +68,16 @@ prompt_response: this is a response to a prompt. We'll need to know which prompt
     }
 }
 ```
+command: this is a command to the server
+```json
+{
+    "version": 1,
+    "message_id": "auth_002",
+    "type": "prompt_response",
+    "ack_needed": true,
+    "body": {
+        "command": "join room",
+        "target": "lobby",
+    }
+}
+```

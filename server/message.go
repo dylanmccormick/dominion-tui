@@ -25,6 +25,10 @@ type (
 	ChatBody  struct {
 		Message string `json:"message"`
 	}
+	CommandBody struct {
+		Target  string `json:"target"` // the user to target. or room to target
+		Command string `json:"command"`
+	}
 	Diff struct {
 		Operation string `json:"op"`
 		JsonPath  string `json:"path"`
@@ -50,4 +54,11 @@ func decodeMessage(data []byte) Message {
 	}
 
 	return msg
+}
+
+var UnauthenticatedError = Message{
+	Version:   "1",
+	MessageId: "Error_01",
+	Type:      "error",
+	AckNeeded: false,
 }

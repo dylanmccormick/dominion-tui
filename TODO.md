@@ -1,5 +1,16 @@
 9/5/2025
 
+#### Architecture:
+- Users and Rooms need to know the context of the server. So if a player asks to switch rooms then that can happen. Maybe each room will need a context. Is it context all the way down?
+- Server level context:
+    - []Rooms (or room names so we're not passing around too much)
+    - []Players online (could help later if we wanted to have like direct messaging or invites)
+    - Database????
+    - Mutex for rooms and players
+    - Logger
+    - ServerConfig
+    
+
 ##### Network Layer
 - Different message types in server. Probably some sort of method of retrieving those quickly... when do I use a database?
                 - WHEN THINGS GET SLOW

@@ -8,9 +8,9 @@ import (
 	"io"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/dylanmccormick/dominion-tui/internal/utils"
+	"github.com/dylanmccormick/dominion-tui/pkg/assert"
 	"github.com/google/uuid"
 )
 
@@ -43,7 +43,6 @@ func CreateNewUser(conn net.Conn) *User {
 			{Name: "password", Type: "password", Required: true},
 		},
 	})
-
 	if err != nil {
 		fmt.Println(fmt.Errorf("Json marshaling went bad for prompt: %s", err))
 		return nil
@@ -53,7 +52,7 @@ func CreateNewUser(conn net.Conn) *User {
 		MessageId: "auth_001",
 		Type:      "prompt",
 		AckNeeded: true,
-		Body: pb,
+		Body:      pb,
 	}
 
 	msg, err := json.Marshal(prompt)
@@ -63,8 +62,9 @@ func CreateNewUser(conn net.Conn) *User {
 	fmt.Fprintf(conn, "%s\r\n", msg)
 
 	u := &User{
-		Conn: conn,
-		ID:   uuid.New(),
+		Conn:   conn,
+		ID:     uuid.New(),
+		Buffer: []byte{},
 	}
 	name := string(u.GetUserInput())
 	u.Username = strings.Trim(name, "\n")
@@ -126,9 +126,7 @@ func (u *User) HandleMessages() {
 	go u.InputChannel()
 	for {
 		u.ProcessMessage()
-		time.Sleep(1 * time.Second)
 	}
-	
 }
 
 // This method will read the user input and route it where it needs to go. May do some transformation or whatever
@@ -137,9 +135,7 @@ func (u *User) ProcessMessage() {
 	// Process That message
 	var message Message
 
-	fmt.Println("gettting index of registered nurse")
 	idx := bytes.Index(u.Buffer, []byte("\r\n"))
-	fmt.Println(idx)
 	if idx == -1 {
 		return
 	}
@@ -151,14 +147,14 @@ func (u *User) ProcessMessage() {
 	}
 
 	switch message.Type {
-		case "prompt_response":
-			u.handlePromptResponse(message)
-		case "chat":
-			u.handleChat(message)
-		case "action":
-			u.handleAction(message)
-		case "command":
-			u.handleCommand(message)
+	case "prompt_response":
+		u.handlePromptResponse(message)
+	case "chat":
+		u.handleChat(message)
+	case "action":
+		u.handleAction(message)
+	case "command":
+		u.handleCommand(message)
 	}
 }
 
@@ -166,8 +162,13 @@ func (u *User) handlePromptResponse(msg Message) {
 }
 
 func (u *User) handleChat(msg Message) {
-	// Take the chat. Add the username to the message <username>: 
-	// Push the message to the Broadcast channel of the room
+
+	// TODO: Uncomment when Auth flow is working
+	// if u.State == UNAUTHENTICATED {
+	// 	e, _ := json.Marshal(UnauthenticatedError)
+	// 	fmt.Fprintf(u.Conn, "%s\r\n", e)
+	// 	return
+	// }
 	var cb ChatBody
 
 	err := json.Unmarshal(msg.Body, &cb)
@@ -177,7 +178,7 @@ func (u *User) handleChat(msg Message) {
 	}
 
 	cb.Message = fmt.Sprintf("%s: %s", u.Username, cb.Message)
-	
+
 	chatData, err := json.Marshal(cb)
 	if err != nil {
 		e := fmt.Errorf("Invalid chat alteration: %s", err)
@@ -192,8 +193,25 @@ func (u *User) handleAction(msg Message) {
 }
 
 func (u *User) handleCommand(msg Message) {
+	assert.Assert(msg.Type == "command", "handle command expects a command type message")
+
+	var cb CommandBody
+
+	err := json.Unmarshal(msg.Body, &cb)
+	if err != nil {
+		e := fmt.Errorf("Invalid chat body: %s", err)
+		panic(e)
+	}
+
+	switch cb.Command {
+	case "join room":
+		// should this send to a channel for the server that handles commands? no
+		// Should I be passing around context like the rooms and the number of players and such??
+	}
+
+
 }
- 
+
 func (u *User) SendMessage(byts []byte) {
 	prepend := fmt.Appendf(nil, "%s: ", u.Username)
 	message := append(prepend, byts...)
