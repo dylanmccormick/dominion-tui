@@ -22,6 +22,7 @@ type (
 		RoomId   string
 		Room     *Room
 		State    AuthState
+		Buffer   []byte
 	}
 )
 
@@ -32,13 +33,26 @@ const (
 )
 
 func CreateNewUser(conn net.Conn) *User {
-	// TODO: Add in a prompt here
-	prompt := Prompt{
+	pb, err := json.Marshal(PromptBody{
+		PromptType: "authentication",
+		Title:      "Login Required",
+		Options:    []string{"login", "register"},
+		Fields: []Field{
+			{Name: "username", Type: "text", Required: true},
+			{Name: "password", Type: "password", Required: true},
+		},
+	})
+
+	if err != nil {
+		fmt.Println(fmt.Errorf("Json marshaling went bad for prompt: %s", err))
+		return nil
+	}
+	prompt := Message{
 		Version:   "1",
 		MessageId: "auth_001",
 		Type:      "prompt",
 		AckNeeded: true,
-		Body:      map[string]any{},
+		Body: pb,
 	}
 
 	msg, err := json.Marshal(prompt)
@@ -111,6 +125,64 @@ func (u *User) InputChannel(c chan []byte) {
 	}
 }
 
+// This method will read the user input and route it where it needs to go. May do some transformation or whatever
+func (u *User) ProcessMessage() {
+	// Find the first iteration of /r/n in u.Buffer
+	// Process That message
+	var message Message
+
+	idx := bytes.Index(u.Buffer, []byte("\r\n"))
+	data := u.Buffer[:idx]
+	u.Buffer = u.Buffer[idx+2:]
+	err := json.Unmarshal(data, message)
+	if err != nil {
+		panic(err)
+	}
+
+	switch message.Type {
+		case "prompt_response":
+			u.handlePromptResponse(message)
+		case "chat":
+			u.handleChat(message)
+		case "action":
+			u.handleAction(message)
+		case "command":
+			u.handleCommand(message)
+	}
+}
+
+func (u *User) handlePromptResponse(msg Message) {
+}
+
+func (u *User) handleChat(msg Message) {
+	// Take the chat. Add the username to the message <username>: 
+	// Push the message to the Broadcast channel of the room
+	var cb ChatBody
+
+	err := json.Unmarshal(msg.Body, cb)
+	if err != nil {
+		e := fmt.Errorf("Invalid chat body: %s", err)
+		panic(e)
+	}
+
+	cb.Message = fmt.Sprintf("%s: %s", u.Username, cb.Message)
+	
+	chatData, err := json.Marshal(cb)
+	if err != nil {
+		e := fmt.Errorf("Invalid chat alteration: %s", err)
+		panic(e)
+	}
+	msg.Body = chatData
+
+	u.Room.BroadcastChannel <- msg
+}
+
+func (u *User) handleAction(msg Message) {
+}
+
+func (u *User) handleCommand(msg Message) {
+}
+ 
 func (u *User) SendMessage(byts []byte) {
 	prepend := fmt.Appendf(nil, "%s: ", u.Username)
 	message := append(prepend, byts...)
@@ -118,9 +190,5 @@ func (u *User) SendMessage(byts []byte) {
 	fmt.Fprintf(u.Conn, "%s", message)
 }
 
-func (u *User) HandleChat() {
-	fmt.Printf("Handling chat for user: %s\n", u.Username)
-	if u.Room != nil {
-		go u.InputChannel(u.Room.InputChannel)
-	}
-}
+// TODO: Some sort of loop to constantly check for input from user and put it into the BUFFER
+// TODO: Loop/ Goroutine to constantly process the BUFFER for the user

@@ -1,3 +1,12 @@
+9/5/2025
+
+##### Network Layer
+- Different message types in server. Probably some sort of method of retrieving those quickly... when do I use a database?
+                - WHEN THINGS GET SLOW
+- Tests maybe? Tests are good, but I'm not sure how to write them for a TCP server
+- ACK response?
+- Revitalize message parsing. I probably want a bit more structure. And should use a buffer
+
 # High Level Description
 
 ## The Repository will be separated by different layers

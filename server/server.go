@@ -63,19 +63,17 @@ func (s Server) Serve() error {
 
 func (s *Server) updateRooms() {
 	for {
-		for _, room := range s.Rooms {
-			room.GetInputs()
-			room.Update()
-		}
+		// for _, room := range s.Rooms {
+		// 	// room.GetInputs()
+		// 	// room.Update()
+		// }
 	}
 }
 
 // change this to create a new client and assign to a room
 func (s *Server) handleRequest(conn net.Conn) {
 	scanner := bufio.NewReader(conn) // we shouldn't need to read input yet. Let's break this up logically
-	fmt.Fprintf(conn, "%s\r\n", "Welcome to the server. This is the main menu")
 	user := CreateNewUser(conn)
-	fmt.Fprintf(conn, "%s\r\n", "Please select a room to join")
 	buffer := make([]byte, 4096)
 	_, err := scanner.Read(buffer)
 	if err != nil {
@@ -91,7 +89,7 @@ func (s *Server) handleRequest(conn net.Conn) {
 	clean := utils.ClearZeros(data[0])
 	name := strings.Trim(string(clean), " \n")
 	fmt.Println(s.assignRoom(user, name))
-	go user.HandleChat()
+	// go user.HandleChat()
 }
 
 func (s *Server) assignRoom(user *User, name string) string {
@@ -111,19 +109,12 @@ func (s *Server) assignRoom(user *User, name string) string {
 }
 
 func createLobby() *Room {
-	ic := make(chan []byte)
-	chc := make(chan Message, 10)
-	cc := make(chan Message, 10)
-	ac := make(chan Message, 10)
-
+	bc := make(chan Message, 10)
 
 	return &Room{
 		ID:           "lobby",
 		Players:      map[uuid.UUID]User{},
-		InputChannel: ic,
-		ChatChannel: chc,
-		CommandChannel: cc,
-		ActionChannel: ac,
+		BroadcastChannel: bc,
 	}
 }
 

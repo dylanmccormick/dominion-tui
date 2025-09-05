@@ -5,35 +5,41 @@ import (
 	// "github.com/google/uuid"
 )
 
-type Message struct {
-	Requester string         `json:"requester"`
-	Typ       string         `json:"message_type"`
-	Body      map[string]any `json:"body"`
-	Time      int64
+type Field struct {
+	Name     string
+	Type     string
+	Required bool
 }
+type PromptBody struct {
+	PromptType string   `json:"prompt_type"`
+	Title      string   `json:"title"`
+	Options    []string `json:"options"`
+	Fields     []Field  `json:"fields"`
+}
+type (
+	PromptResponseBody struct{}
+	GameDiff           struct {
+		Diffs []Diff `json:"diff"`
+	}
+	GameState struct{}
+	ChatBody  struct {
+		Message string `json:"message"`
+	}
+	Diff struct {
+		Operation string `json:"op"`
+		JsonPath  string `json:"path"`
+		Value     any    `json:"value"`
+	}
+)
 
-// {
-//     "version": 1,
-//     "message_id": "auth_001",
-//     "type": "prompt",
-//     "ack_needed": true,
-//     "body": {
-//         "prompt_type": "authentication",
-//         "title": "Login Required",
-//         "options": ["login", "register"]
-//         "fields": [
-//             {"name": "username", "type": "text", "required": true},
-//             {"name": "password", "type": "password", "required": true}
-//         ]
-//     }
-// }
-
-type Prompt struct {
-	Version   string `json:"version"`
-	MessageId string `json:"message_id"`
-	Type      string `json:"type"`
-	AckNeeded bool `json:"ack_needed"`
-	Body map[string]any `json:"body"`
+// Message type to prompt the user to send back input from a menu in the TUI
+type Message struct {
+	Version   string          `json:"version"`
+	MessageId string          `json:"message_id"`
+	Type      string          `json:"type"`
+	AckNeeded bool            `json:"ack_needed"`
+	Time      int64           `json:"time_sent"`
+	Body      json.RawMessage `json:"body"`
 }
 
 func decodeMessage(data []byte) Message {

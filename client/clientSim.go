@@ -36,18 +36,18 @@ func SimulateClient() {
 			continue
 		}
 		conn.Write(append(msg, []byte("\r\n")...))
-		
-		msg, err = json.Marshal(CreateRandomAction())
-		if err != nil {
-			continue
-		}
-		conn.Write(append(msg, []byte("\r\n")...))
 
-		msg, err = json.Marshal(CreateRandomCommand())
-		if err != nil {
-			continue
-		}
-		conn.Write(append(msg, []byte("\r\n")...))
+		// msg, err = json.Marshal(CreateRandomAction())
+		// if err != nil {
+		// 	continue
+		// }
+		// conn.Write(append(msg, []byte("\r\n")...))
+		//
+		// msg, err = json.Marshal(CreateRandomCommand())
+		// if err != nil {
+		// 	continue
+		// }
+		// conn.Write(append(msg, []byte("\r\n")...))
 	}
 
 	time.Sleep(100 * time.Second)
@@ -104,66 +104,64 @@ func CreateRandomChat() server.Message {
 		"Very doubtful",
 	}
 
-	names := []string{
-		"Dylan",
-		"Oliver",
-		"ClapTrap",
-		"Meeble",
+	cm, err := json.Marshal(server.ChatBody{
+		Message: answers[rand.Intn(len(answers))],
+	})
+	if err != nil {
+		fmt.Errorf("You done messed up the json: %s", err)
 	}
-
 	return server.Message{
-		Requester: names[rand.Intn(len(names))],
-		Typ:       "chat",
-		Body: map[string]any{
-			"message": fmt.Sprintf("Magic 8-Ball says: %s", answers[rand.Intn(len(answers))]),
-		},
+		Version:   "1",
+		MessageId: "chat_001",
+		Type:      "chat",
+		Body:      cm,
 	}
 }
 
-func CreateRandomAction() server.Message {
-	cards := []string{
-		"Market",
-		"Plain",
-		"Beef",
-	}
-
-	names := []string{
-		"Dylan",
-		"Oliver",
-		"ClapTrap",
-		"Meeble",
-	}
-
-	return server.Message{
-		Requester: names[rand.Intn(len(names))],
-		Typ:       "action",
-		Body: map[string]any{
-			"action_name": "discard",
-			"cards": cards,
-		},
-	}
-}
-
-func CreateRandomCommand() server.Message {
-	commands := []string{
-		"Mute",
-		"Kick",
-		"Leave",
-	}
-
-	names := []string{
-		"Dylan",
-		"Oliver",
-		"ClapTrap",
-		"Meeble",
-	}
-
-	return server.Message{
-		Requester: names[rand.Intn(len(names))],
-		Typ:       "command",
-		Body: map[string]any{
-			"command_name": commands[rand.Intn(len(commands))],
-			"target": names[rand.Intn(len(names))],
-		},
-	}
-}
+// func CreateRandomAction() server.Message {
+// 	cards := []string{
+// 		"Market",
+// 		"Plain",
+// 		"Beef",
+// 	}
+//
+// 	names := []string{
+// 		"Dylan",
+// 		"Oliver",
+// 		"ClapTrap",
+// 		"Meeble",
+// 	}
+//
+// 	return server.Message{
+// 		Requester: names[rand.Intn(len(names))],
+// 		Typ:       "action",
+// 		Body: map[string]any{
+// 			"action_name": "discard",
+// 			"cards":       cards,
+// 		},
+// 	}
+// }
+//
+// func CreateRandomCommand() server.Message {
+// 	commands := []string{
+// 		"Mute",
+// 		"Kick",
+// 		"Leave",
+// 	}
+//
+// 	names := []string{
+// 		"Dylan",
+// 		"Oliver",
+// 		"ClapTrap",
+// 		"Meeble",
+// 	}
+//
+// 	return server.Message{
+// 		Requester: names[rand.Intn(len(names))],
+// 		Typ:       "command",
+// 		Body: map[string]any{
+// 			"command_name": commands[rand.Intn(len(commands))],
+// 			"target":       names[rand.Intn(len(names))],
+// 		},
+// 	}
+// }
