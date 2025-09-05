@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/dylanmccormick/dominion-tui/internal/utils"
 	"github.com/google/uuid"
@@ -103,7 +104,7 @@ func (u *User) GetUserInput() []byte {
 	return clean
 }
 
-func (u *User) InputChannel(c chan []byte) {
+func (u *User) InputChannel() {
 	for {
 		scanner := bufio.NewReader(u.Conn)
 		buffer := make([]byte, 10240)
@@ -117,24 +118,34 @@ func (u *User) InputChannel(c chan []byte) {
 				break
 			}
 		}
-		data := bytes.Split(buffer, []byte("\r\n"))
-		for _, dat := range data[:len(data)-1] {
-			clean := utils.ClearZeros(dat)
-			c <- clean
-		}
+		u.Buffer = append(u.Buffer, utils.ClearZeros(buffer)...)
 	}
+}
+
+func (u *User) HandleMessages() {
+	go u.InputChannel()
+	for {
+		u.ProcessMessage()
+		time.Sleep(1 * time.Second)
+	}
+	
 }
 
 // This method will read the user input and route it where it needs to go. May do some transformation or whatever
 func (u *User) ProcessMessage() {
-	// Find the first iteration of /r/n in u.Buffer
+	// Find the first iteration of \r\n in u.Buffer
 	// Process That message
 	var message Message
 
+	fmt.Println("gettting index of registered nurse")
 	idx := bytes.Index(u.Buffer, []byte("\r\n"))
+	fmt.Println(idx)
+	if idx == -1 {
+		return
+	}
 	data := u.Buffer[:idx]
 	u.Buffer = u.Buffer[idx+2:]
-	err := json.Unmarshal(data, message)
+	err := json.Unmarshal(data, &message)
 	if err != nil {
 		panic(err)
 	}
@@ -159,7 +170,7 @@ func (u *User) handleChat(msg Message) {
 	// Push the message to the Broadcast channel of the room
 	var cb ChatBody
 
-	err := json.Unmarshal(msg.Body, cb)
+	err := json.Unmarshal(msg.Body, &cb)
 	if err != nil {
 		e := fmt.Errorf("Invalid chat body: %s", err)
 		panic(e)

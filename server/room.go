@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
 	// "encoding/json"
 	"fmt"
 
@@ -21,6 +22,15 @@ func (r *Room) String() string {
 	out.WriteString(fmt.Sprintf("ID: %s\n", r.ID))
 
 	return out.String()
+}
+
+func (r *Room) Update() {
+	select {
+	case msg := <- r.BroadcastChannel:
+		r.handleChat(msg)
+	default:
+		return
+	}
 }
 
 // func (r *Room) Update() {
@@ -50,8 +60,16 @@ func (r *Room) String() string {
 // 	}
 // }
 
-func (r *Room) handleChat(a any) {
-	fmt.Println("TODO IN PROGRESS")
+func (r *Room) handleChat(msg Message) {
+	for _, u := range r.Players {
+		data, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Println("got error sending message")
+			return
+		}
+		fmt.Fprintf(u.Conn, "%s\r\n", string(data))
+
+	}
 }
 
 // TODO: Rethink. Chat body will be just passed from server to client. Is there a need to translate it?

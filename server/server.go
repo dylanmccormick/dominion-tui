@@ -63,10 +63,9 @@ func (s Server) Serve() error {
 
 func (s *Server) updateRooms() {
 	for {
-		// for _, room := range s.Rooms {
-		// 	// room.GetInputs()
-		// 	// room.Update()
-		// }
+		for _, room := range s.Rooms {
+			room.Update()
+		}
 	}
 }
 
@@ -89,7 +88,7 @@ func (s *Server) handleRequest(conn net.Conn) {
 	clean := utils.ClearZeros(data[0])
 	name := strings.Trim(string(clean), " \n")
 	fmt.Println(s.assignRoom(user, name))
-	// go user.HandleChat()
+	go user.HandleMessages()
 }
 
 func (s *Server) assignRoom(user *User, name string) string {
